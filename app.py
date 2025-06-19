@@ -8,7 +8,7 @@ st.subheader("Discover events tailored to your neighborhood and interests")
 
 @st.cache_data
 def load_data():
-    url = "https://raw.githubusercontent.com/vigicutler/local-event-agent/main/extended_event_landscape.csv"
+    url = "https://raw.githubusercontent.com/vigicutler/localeventagent/main/extended_event_landscape.csv"
     try:
         df = pd.read_csv(url)
         return df
