@@ -8,10 +8,10 @@ st.set_page_config(page_title="Local Event Agent", layout="wide")
 st.title("🌆 Local Event Agent")
 st.subheader("Discover events tailored to your neighborhood and interests")
 
-# Load data
 @st.cache_data
 def load_data():
-    df = pd.read_csv("extended_event_landscape.csv")
+    url = "https://raw.githubusercontent.com/vigicutler/local-event-agent/main/extended_event_landscape.csv"
+    df = pd.read_csv(url)
     return df
 
 df = load_data()
