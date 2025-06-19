@@ -2,55 +2,49 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="Neighborhood AI", layout="wide")
-st.title("🌆 Neighborhood Engagement Agent")
+st.set_page_config(page_title="Local Event Agent", layout="wide")
 
-# Load event data
+# Title
+st.title("🌆 Local Event Agent")
+st.subheader("Discover events tailored to your neighborhood and interests")
+
+# Load data
 @st.cache_data
 def load_data():
-    return pd.read_csv("extended_event_landscape.csv")
+    df = pd.read_csv("extended_event_landscape.csv")
+    return df
 
-data = load_data()
-data["Tags"] = data["Tags"].fillna("General")
+df = load_data()
 
-# Split tabs
-tab1, tab2 = st.tabs(["🎉 What Should I Do Today?", "🛠️ What Should I Host?"])
+# User filters
+neighborhood = st.selectbox("Select your neighborhood:", sorted(df["Neighborhood"].dropna().unique()))
+day = st.selectbox("Select a day:", sorted(df["Date"].dropna().unique()))
+tag_filter = st.multiselect("Filter by tag:", sorted(set(tag for tags in df["Tags"].dropna() for tag in tags.split(","))))
 
-with tab1:
-    st.header("🎯 Personalized Event Finder")
+# Filter data
+filtered_df = df[
+    (df["Neighborhood"] == neighborhood) &
+    (df["Date"] == day)
+]
 
-    zip_input = st.selectbox("Choose a ZIP Code", sorted(data["ZIP"].dropna().unique()))
-    tag_options = sorted(set(tag for tags in data["Tags"] for tag in str(tags).split(",")))
-    selected_tags = st.multiselect("Pick your interests", tag_options)
-    date_input = st.date_input("Choose a date")
+if tag_filter:
+    filtered_df = filtered_df[filtered_df["Tags"].apply(lambda x: any(tag in x.split(",") for tag in tag_filter))]
 
-    filtered = data[data["ZIP"] == zip_input]
-    if selected_tags:
-        filtered = filtered[filtered["Tags"].apply(lambda x: any(tag.strip() in x for tag in selected_tags))]
-    filtered = filtered[filtered["Date"] == str(date_input)]
+# Show event cards
+st.markdown("### 🎟️ Top Events")
+for _, row in filtered_df.iterrows():
+    st.markdown(f"""
+---
+### {row['Event Name']}
+🕒 {row['Date']} at {row['Time']}
+📍 {row['Neighborhood']}
+📝 {row['Description']}
+🏷️ {row['Tags']}
+📎 [More Info]({row['URL']})
+    """)
 
-    st.subheader(f"🎯 Top Matches for {zip_input} on {date_input}")
-    for _, row in filtered.head(3).iterrows():
-        st.markdown(f"### {row['Event Name']}")
-        st.markdown(f"🕒 {row['Date']} at {row['Time']}  
-📍 {row['Location']}")
-        st.markdown(f"**Tags:** {row['Tags']}")
-        st.markdown(f"[🔗 More Info]({row['URL']})")
-        st.markdown("---")
-
-with tab2:
-    st.header("🧠 Producer View: Event Insights & Source Tracking")
-
-    st.subheader("Add Your Event Sources")
-    with st.form("producer_form"):
-        ig = st.text_input("Instagram Handle")
-        email = st.text_input("Newsletter URL")
-        website = st.text_input("Website with Events")
-        submitted = st.form_submit_button("Submit")
-
-    if submitted:
-        st.success("✅ Source submitted! (This is a placeholder)")
-
-    st.subheader("📊 Upcoming Gaps or Opportunities")
-    st.markdown("- No arts events listed this Friday in Inwood")
-    st.markdown("- High 311 complaint volume in parks → consider organizing a cleanup")
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        st.button("Add to Calendar", key=f"cal_{row['Event Name']}")
+    with col2:
+        st.button("Share", key=f"share_{row['Event Name']}")
