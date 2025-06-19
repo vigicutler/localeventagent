@@ -9,27 +9,43 @@ st.subheader("Discover events tailored to your neighborhood and interests")
 @st.cache_data
 def load_data():
     url = "https://raw.githubusercontent.com/vigicutler/localeventagent/main/extended_event_landscape.csv"
-    try:
-        df = pd.read_csv(url)
-        return df
-    except Exception as e:
-        st.error("❌ Failed to load event data. Check if the CSV exists and the repo is public.")
-        st.stop()
+    df = pd.read_csv(url)
 
+    # Rename for consistency
+    df = df.rename(columns={
+        "Location": "Neighborhood",
+        "Event Name": "Event Name",
+        "Description": "Description",
+        "URL": "URL",
+        "Date": "Date",
+        "Time": "Time",
+        "Tags": "Tags"
+    })
+
+    # Ensure Tags column exists and has no NaNs
+    if "Tags" not in df.columns:
+        df["Tags"] = ""
+    else:
+        df["Tags"] = df["Tags"].fillna("")
+
+    return df
+
+# 🔽 Load data first
 df = load_data()
 
-# Filter options
-if "Neighborhood" in df.columns and "Date" in df.columns and "Tags" in df.columns:
+# ✅ Check columns after loading
+required_cols = {"Neighborhood", "Date", "Tags"}
+if required_cols.issubset(df.columns):
     neighborhood = st.selectbox("Select your neighborhood:", sorted(df["Neighborhood"].dropna().unique()))
     day = st.selectbox("Select a day:", sorted(df["Date"].dropna().unique()))
-    tag_filter = st.multiselect("Filter by tag:", sorted(set(tag for tags in df["Tags"].dropna() for tag in tags.split(","))))
+    tag_filter = st.multiselect("Filter by tag:", sorted(set(tag.strip() for tags in df["Tags"].dropna() for tag in tags.split(","))))
 
-    # Filter data
+    # Filter
     filtered_df = df[(df["Neighborhood"] == neighborhood) & (df["Date"] == day)]
     if tag_filter:
-        filtered_df = filtered_df[filtered_df["Tags"].apply(lambda x: any(tag in x.split(",") for tag in tag_filter))]
+        filtered_df = filtered_df[filtered_df["Tags"].apply(lambda x: any(tag.strip() in x.split(",") for tag in tag_filter))]
 
-    # Show results
+    # Render event cards
     st.markdown("### 🎟️ Top Events")
     for _, row in filtered_df.iterrows():
         st.markdown(f"""
@@ -49,4 +65,3 @@ if "Neighborhood" in df.columns and "Date" in df.columns and "Tags" in df.column
             st.button("🔗 Share", key=f"share_{row['Event Name']}")
 else:
     st.error("❌ Expected columns not found in CSV. Please ensure columns like 'Neighborhood', 'Date', and 'Tags' exist.")
-
